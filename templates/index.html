@@ -1,0 +1,119 @@
+{% extends "layout.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+    <div class="container mt-4 index-container">
+        {% if transactions|length == 0 %}
+            <div class="alert alert-warning" role="alert">
+                No transactions found. Please add a transaction to start tracking your budget.
+            </div>
+            <a href="/add_transaction" class="btn btn-primary">Add Transaction</a>
+        {% else %}
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h4 class="card-title">Current Balance</h4>
+                    <p class="card-text display-4 text-center text-success {% if balance > 0 %}text-success{% else %}text-danger{% endif %}">
+                        {{ balance | usd }}
+                    </p>
+                    <div class="export-buttons mt-4">
+                        <a href="/export/csv" class="btn btn-outline-primary">Export to CSV</a>
+                        <a href="/export/pdf" class="btn btn-outline-secondary">Export to PDF</a>
+                    </div>
+                </div>
+            </div>
+
+            <a href="/add_transaction" class="btn btn-primary add-btn">Add Transaction</a>
+
+
+
+            <canvas id="balanceChart" width="400" height="200"></canvas>
+
+            <!-- Filter Form -->
+            <div class="filters mb-4">
+                <span class="find-transactions">Find transactions and their balances</span>
+                <form method="get" action="/" class="mt-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <input type="text" name="search" class="form-control" placeholder="Search by keyword from description" value="{{ filters.query if filters.query is not none else '' }}">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="date" name="start_date" class="form-control" value="{{ filters.start_date }}">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="date" name="end_date" class="form-control" value="{{ filters.end_date }}">
+                        </div>
+                        <div class="col-md-2 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">Search</button>
+                            {% if filters.query or filters.start_date or filters.end_date %}
+                                <a href="/" class="btn btn-secondary">Clear Filters</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Active Filters Alert -->
+            {% if filters.query or filters.start_date or filters.end_date %}
+                <div class="alert alert-info">
+                    <strong>Active Filters:</strong>
+                    {% if filters.query %} <span>Search: "{{ filters.query }}"</span>{% endif %}
+                    {% if filters.start_date %} <span>Start Date: {{ filters.start_date }}</span>{% endif %}
+                    {% if filters.end_date %} <span>End Date: {{ filters.end_date }}</span>{% endif %}
+                </div>
+
+                <!-- Filtered Transactions Table -->
+                <div class="filtered-transactions mt-4">
+                    <h5>Filtered Transactions</h5>
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Category</th>
+                                <th>Amount</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in transactions %}
+                                <tr>
+                                    <td>{{ transaction.description }}</td>
+                                    <td>{{ transaction.category.capitalize() }}</td>
+                                    <td class="{% if transaction.category == 'income' %}text-success{% else %}text-danger{% endif %}">
+                                        {{ transaction.amount | usd }}
+                                    </td>
+                                    <td>{{ transaction.timestamp.split(" ")[0] }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+
+
+        {% endif %}
+    </div>
+    <script>
+        var ctx = document.getElementById('balanceChart').getContext('2d');
+        var balanceChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Income', 'Expenses'],
+                datasets: [{
+                    label: ['Amount'],
+                    data: [{{ income }}, {{ expenses }}],
+                    backgroundColor: ['#4CAF50', '#FF6347'], // green for income, red for expenses
+                    borderColor: ['#4CAF50', '#FF6347'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+{% endblock %}
